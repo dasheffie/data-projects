@@ -1,0 +1,10 @@
+pandas
+scikit-learn
+statsmodels
+matplotlib
+seaborn
+xgboost
+lightgbm
+jinja2
+category_encoders
+imblearn
