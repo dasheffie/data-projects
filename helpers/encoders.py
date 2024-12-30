@@ -1,39 +1,53 @@
 import category_encoders as ce
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, StratifiedKFold
 import numpy as np
 import pandas as pd
 
-def weighted_mean_k_fold_target_encoding(df, target_encode_col: str, target_col: str, k, smoothing):
+import category_encoders as ce
+from sklearn.model_selection import KFold, StratifiedKFold
+import numpy as np
+import pandas as pd
+
+def weighted_mean_k_fold_target_encoding(df, encode_col: str, target_col: str, k=5, smoothing=10, kf_shuffle: bool=True, kf_shuffle_random_state: int=None, stratified: bool=False):
     """
     Perform k-fold target encoding using category_encoders with weighted mean smoothing.
-    
+
     Parameters:
     - df: DataFrame containing the data.
-    - target_encode_col: Column containing the categorical feature to be target encoded.
+    - encode_col: Column containing the categorical feature to be encoded.
     - target_col: Column containing the target variable.
-    - k: Number of splits for K-Fold cross-validation.
+    - k: Number of splits for K-Fold or Stratified K-Fold cross-validation.
     - smoothing: Smoothing parameter (AKA, 'm') for TargetEncoder. (n * option mean + m * overall mean) / (n + m)
-    
+    - kf_shuffle: Whether to shuffle the K-Fold or Stratified K-Fold splits.
+    - kf_shuffle_random_state: Random state for K-Fold or Stratified K-Fold splits.
+    - suffix: Suffix to add to the target encoded column name.
+    - stratified: Whether to use Stratified K-Fold instead of regular K-Fold.
+
     Returns:
-    - Encoded values as a NumPy array.
+    - A NumPy array with the encoded values.
     """
     df = df.copy()
     encoded_values = np.zeros(len(df))  # Store encoded values
 
-    kf = KFold(n_splits=k, shuffle=True, random_state=42)
+    # Choose between KFold and StratifiedKFold
+    if stratified:
+        kf = StratifiedKFold(n_splits=k, shuffle=kf_shuffle, random_state=kf_shuffle_random_state)
+    else:
+        kf = KFold(n_splits=k, shuffle=kf_shuffle, random_state=kf_shuffle_random_state)
 
-    for train_idx, val_idx in kf.split(df):
+    for fold, (train_idx, val_idx) in enumerate(kf.split(df, df[encode_col] if stratified else None)):
         train_data, val_data = df.iloc[train_idx], df.iloc[val_idx]
 
         # Initialize and fit the TargetEncoder
-        encoder = ce.TargetEncoder(cols=[target_encode_col], smoothing=smoothing)
-        encoder.fit(train_data[target_encode_col], train_data[target_col])
+        encoder = ce.TargetEncoder(cols=[encode_col], smoothing=smoothing)
+        encoder.fit(train_data[encode_col], train_data[target_col])
 
         # Transform validation data
-        val_data_encoded = encoder.transform(val_data[target_encode_col])
-        encoded_values[val_idx] = val_data_encoded[target_encode_col]
+        val_data_encoded = encoder.transform(val_data[encode_col])
+        encoded_values[val_idx] = val_data_encoded[encode_col]
 
     return encoded_values
+
 
 def clean_and_split_string(element, fill_nan=True):
     """
