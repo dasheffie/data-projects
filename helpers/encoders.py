@@ -72,38 +72,35 @@ def clean_and_split_string(element, fill_nan=True):
 
 import pandas as pd
 
-def weighted_average_encoding(df, numeric_col: str, categorical_col: str, m: int =10):
+def weighted_average_encoding(df, numeric_col: str, categorical_cols: list, smoothing: int = 10):
     """
-    Calculate a weighted average for each value of the categorical column based on a numeric column.
+    Calculate a weighted average for combinations of values in multiple categorical columns based on a numeric column.
 
     Parameters:
     - df (pd.DataFrame): The input DataFrame.
     - numeric_col (str): The name of the numeric column to average.
-    - categorical_col (str): The name of the categorical column used to weight the average.
-    - m (float): The regularization parameter (default: 10).
+    - categorical_cols (list): A list of categorical column names used to weight the average.
+    - smoothing (int): The regularization parameter (default: 10).
 
     Returns:
-    - pd.Series: A series containing the weighted average for each value of the categorical column.
+    - pd.Series: A series containing the weighted average for each combination of categorical columns.
     """
     df = df.copy()
 
     # Calculate the overall mean of the numeric column
     overall_mean = df[numeric_col].mean()
 
-    # Calculate the mean and count for each value of the categorical column
-    group_stats = df.groupby(categorical_col)[numeric_col].agg(['mean', 'count']).reset_index()
-    group_stats.columns = [categorical_col, 'option_mean', 'n']
+    # Calculate the mean and count for each combination of categorical columns
+    group_stats = df.groupby(categorical_cols)[numeric_col].agg(['mean', 'count']).reset_index()
+    group_stats.columns = categorical_cols + ['option_mean', 'n']
 
     # Calculate the weighted average
-    group_stats['weighted_mean'] = (
-        (group_stats['n'] * group_stats['option_mean'] + m * overall_mean) /
-        (group_stats['n'] + m)
-    )
+    group_stats['weighted_mean'] = ((group_stats['n'] * group_stats['option_mean'] + smoothing * overall_mean) / (group_stats['n'] + smoothing))
 
     # Map the weighted mean back to the original dataframe
-    weighted_avg_series = df[categorical_col].map(group_stats.set_index(categorical_col)['weighted_mean'])
-    
-    # # Fill NAs in the numeric column with the overall mean
+    weighted_avg_series = (df.merge(group_stats[categorical_cols + ['weighted_mean']], on=categorical_cols, how='left')['weighted_mean'])
+
+    # Fill NAs in the numeric column with the overall mean
     weighted_avg_series.fillna(overall_mean, inplace=True)
 
     return weighted_avg_series
