@@ -1,4 +1,3 @@
-# .devcontainer/*
-.devcontainer/devcontainer.env
-.devcontainer/devcontainer.json
+.devcontainer/*
 */__pycache__/*
+.devcontainer/Dockerfile
