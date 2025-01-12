@@ -1,2 +1,4 @@
-.devcontainer/*
+# .devcontainer/*
+.devcontainer/devcontainer.env
+.devcontainer/devcontainer.json
 */__pycache__/*
